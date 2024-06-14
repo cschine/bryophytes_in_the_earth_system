@@ -2,4 +2,3 @@
 This repository contains all code pertaining to the Bryophytes in the 
 Earth System DOE funded project
 
-Testing connection between lab computer and github
