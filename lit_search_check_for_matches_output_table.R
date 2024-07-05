@@ -2,12 +2,10 @@
 
 
 library(stringr) #to trim file name strings
-library(tidyverse)
+library(tidyverse) #for everything
 library(stringdist) #for fuzzy string matching
 
-# create file list for target directory 
-target_dir <- "./lit_search_results/test_more/"
-
+####################### FUNCTIONS ##############################
 ### Function that takes in directory with .csv files from individual searches
 #from PoP and outputs either a tibble or a list of all the results
 #the recordID option is only available for a tibble
@@ -78,14 +76,6 @@ read_search_results_from_directory <- function(directory_string,
     return(lit_results_list)
   }
 }
-
-# create list of all search results in target directory
-search_results_list <- read_search_results_from_directory(target_dir, output="list")
-
-# create tibble of all search results in target directory
-search_results_all_tbl <- read_search_results_from_directory(
-  target_dir, output="tibble", RecordID=TRUE)
-
 
 ### Function to check for matches within each set of results, takes in tibble
 create_string_match_tbl_for_results <- function(search_result_tbl,
@@ -171,13 +161,6 @@ create_string_match_tbl_for_results <- function(search_result_tbl,
   return(match_output_tbl)
 }
 
-result_match_tbl <- create_string_match_tbl_for_results(search_results_all_tbl,
-                                                        fxn='adist',
-                                                        threshold=10,
-                                                        max_matches=24,
-                                                        length_match=TRUE,
-                                                        match_length_add=5)
-
 
 ### sub functions to call in match checking function
 # function for assembling lines of text from a record
@@ -199,7 +182,7 @@ format_text_for_console <- function(text_vector_) {
     }
 }
 
-#function to taek command line input on record matches
+#function to take command line input on record matches
 take_user_input <- function(prompt="Is this a match to the Target Record? (y/n)") {
   # Prompt the user and read input from command line
   input <- readline(prompt)
@@ -321,7 +304,6 @@ user_comfirmation_of_matches <- function(match_tbl, record_tbl) {
   return(confirmed_match_tbl)
 }
 
-confirmed_match_tbl <- user_comfirmation_of_matches(result_match_tbl, search_results_all_tbl)
 
 #function to take input record tibble and match tibble 
 # output tibble with no duplicates and target record has been amended with 
@@ -384,4 +366,27 @@ remove_duplicate_records <- function(match_tbl, record_tbl){
     } 
   }
 }
+#################################################################################
 
+
+############# Run the Functions ##############
+# create file list for target directory 
+target_dir <- "./lit_search_results/test_more/"
+
+# create list of all search results in target directory
+#search_results_list <- read_search_results_from_directory(target_dir, output="list")
+
+# create tibble of all search results in target directory
+search_results_all_tbl <- read_search_results_from_directory(
+  target_dir, output="tibble", RecordID=TRUE)
+
+result_match_tbl <- create_string_match_tbl_for_results(search_results_all_tbl,
+                                                        fxn='adist',
+                                                        threshold=10,
+                                                        max_matches=24,
+                                                        length_match=TRUE,
+                                                        match_length_add=5)
+
+confirmed_match_tbl <- user_comfirmation_of_matches(result_match_tbl, search_results_all_tbl)
+
+deduplicated_results_tbl <- remove_duplicate_records()
