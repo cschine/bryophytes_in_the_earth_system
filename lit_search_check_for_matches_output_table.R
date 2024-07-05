@@ -6,6 +6,9 @@ library(tidyverse) #for everything
 library(stringdist) #for fuzzy string matching
 
 ####################### FUNCTIONS ##############################
+# create file list for target directory 
+target_dir <- "./lit_search_results/moss_batch/"
+
 ### Function that takes in directory with .csv files from individual searches
 #from PoP and outputs either a tibble or a list of all the results
 #the recordID option is only available for a tibble
@@ -160,6 +163,9 @@ create_string_match_tbl_for_results <- function(search_result_tbl,
   }
   return(match_output_tbl)
 }
+
+
+write.csv(result_match_tbl, "./lit_search_results/moss_batch_initial_match_tbl.csv")
 
 
 ### sub functions to call in match checking function
