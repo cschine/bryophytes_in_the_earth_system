@@ -89,6 +89,7 @@ search_results_all_tbl <- read_search_results_from_directory(
 
 ### Function to check for matches within each set of results, takes in tibble
 create_string_match_tbl_for_results <- function(search_result_tbl,
+                                                fxn=c('adist','agrep'),
                                                 threshold=5,
                                                 max_matches=10,
                                                 length_match=FALSE,
@@ -107,7 +108,8 @@ create_string_match_tbl_for_results <- function(search_result_tbl,
   names(match_output_tbl) <- column_names
   
   for (i in 1:nrow(search_result_tbl)) {
-    print(i)
+    #print(i)
+    cat(paste(i, " in ", nrow(search_result_tbl), "\n", sep=""))
     #define target record and select entire row
     target_record_tbl <-search_result_tbl %>% slice(i)
     
@@ -118,11 +120,19 @@ create_string_match_tbl_for_results <- function(search_result_tbl,
     
     # search for matches using agrep() Fuzzy Matching, part of Base R package
     # uses generalized Lehvenshtein edit distance
-    result_matches <- agrep(target_record_tbl$Title, non_target_record_tbl$Title, 
-                     max.distance = threshold, value = FALSE)
-    result_matches_names <- agrep(target_record_tbl$Title, non_target_record_tbl$Title, 
-                            max.distance = threshold, value = TRUE)
     
+    if (fxn=='agrep') {
+      result_matches <- agrep(target_record_tbl$Title, non_target_record_tbl$Title, 
+                              max.distance = threshold, value = FALSE)
+      result_matches_names <- agrep(target_record_tbl$Title, non_target_record_tbl$Title, 
+                                    max.distance = threshold, value = TRUE)
+    } else if (fxn=='adist') {
+      result_matches <- which(adist(target_record_tbl$Title, non_target_record_tbl$Title)<=threshold)
+      result_matches_tbl <- non_target_record_tbl %>%
+        slice(result_matches)
+      result_matches_names <- result_matches_tbl$Title
+    }
+
     if (length_match==TRUE){
       if (length(result_matches>0)){
         allowable_target_title_length <- match_length_add+
@@ -162,7 +172,8 @@ create_string_match_tbl_for_results <- function(search_result_tbl,
 }
 
 result_match_tbl <- create_string_match_tbl_for_results(search_results_all_tbl,
-                                                        threshold=2,
+                                                        fxn='adist',
+                                                        threshold=10,
                                                         max_matches=24,
                                                         length_match=TRUE,
                                                         match_length_add=5)
@@ -220,28 +231,25 @@ user_comfirmation_of_matches <- function(match_tbl, record_tbl) {
     stop("function has been aborted")
   }
   
+  
   # loop though each target record
   for (i in 1:nrow(match_tbl)){
   #for (i in 11:15) {
     # get target record information from search result tibble
     target_record_id <- match_tbl$target_record[i]
     target_record_tbl <-record_tbl %>% filter(RecordID==target_record_id)
-    
+    #parse the title string and determine length to use later
+    target_title_length <- length(str_split_1(target_record_tbl$Title," "))
     #get vector of match RecordIDs for target record
     match_record_id_vec <- as.vector(match_tbl[i,2:ncol(match_tbl)])
     #remove NAs and get total number of matches to use in match for loop
     match_record_num <- length(match_record_id_vec[!is.na(match_record_id_vec)])
     
+    cat(paste("Record # ", i, " of ", nrow(match_tbl),"\n"))
+    
     #if statement for number of matches==0 and number of matches>0
     if(match_record_num==0){
       Sys.sleep(0.5) #add pause so it doesn't hurt my brain
-      #send target record information with formatting to the console
-      cat("=======================\n")
-      cat("Target Record:\n")
-      target_command_line_text <- assemble_record_output(target_record_tbl)
-      format_text_for_console(target_command_line_text)
-      Sys.sleep(0.5) #add pause so it doesn't hurt my brain
-      
       #Send text for no matching records to the console
       cat("......................\n")
       cat("No matching records found\n")
@@ -254,6 +262,8 @@ user_comfirmation_of_matches <- function(match_tbl, record_tbl) {
         match_record_id <- match_record_id_vec[j]
         match_record_tbl <-record_tbl %>% filter(RecordID==match_record_id)
         
+        diss_dist <- adist(target_record_tbl$Title, match_record_tbl$Title)
+
         # conditional to deal with a few potential problems
         if (match_record_id==target_record_id){
           # the match_record_id and target_record_id should never be the same 
@@ -264,11 +274,21 @@ user_comfirmation_of_matches <- function(match_tbl, record_tbl) {
                           paste("This should not happen. Go find the problem"))
           format_text_for_console(error_text)
           stop("function has been aborted")
-        } else if (target_record_id>match_record_id){
-          #set match to NA if target record ID higher than match record ID
-          #in this case we have already evaluated this match
-          #and we don't want to deal with it twice when culling duplicate records
-          confirmed_match_tbl[i,j+1] <- NA
+        } else if (diss_dist==0 & target_title_length>4) {
+          #If the titles of the target and the match are identical, no evaluation needed
+          #print to the console and move on without any changes to the match_tbl
+          Sys.sleep(0.5) #add pause so it doesn't hurt my brain
+          cat("=======================\n")
+          cat("EXACT MATCH. YAY!!!\n")
+          cat("......................\n")
+          cat("Target Record Title:\n")
+          format_text_for_console(paste(target_record_tbl$Title,"\n"))
+          cat(paste("Is an exact match for Match Record ",j, " Title:\n"))
+          format_text_for_console(paste(match_record_tbl$Title,"\n"))
+          cat("Match is retained. No user input needed.\n")
+          cat("=======================\n")
+          
+          Sys.sleep(0.5) #add pause so it doesn't hurt my brain
         } else {
           #send target record information to the console
           Sys.sleep(0.5) #add pause so it doesn't hurt my brain
@@ -306,6 +326,9 @@ confirmed_match_tbl <- user_comfirmation_of_matches(result_match_tbl, search_res
 #function to take input record tibble and match tibble 
 # output tibble with no duplicates and target record has been amended with 
 # information about deleted records
+
+#needed: need to deal with records that have already been evaluated as duplicates
+# where record number is higher than match
 remove_duplicate_records <- function(match_tbl, record_tbl){
   #create empty tibble with correct column names for output of records
   output_tbl <- tibble()
