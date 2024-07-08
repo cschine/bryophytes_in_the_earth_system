@@ -4,6 +4,7 @@
 library(stringr) #to trim file name strings
 library(tidyverse) #for everything
 library(stringdist) #for fuzzy string matching
+library(beepr) #for beeping to notify user of function requiring input
 
 ####################### FUNCTIONS ##############################
 ### Function that takes in directory with .csv files from individual searches
@@ -91,7 +92,7 @@ create_string_match_tbl_for_results <- function(search_result_tbl,
   # Create a matrix filled with NA
   na_matrix <- matrix(NA, nrow = num_rows, ncol = num_cols)
   # Convert the matrix to a tibble
-  match_output_tbl <- as_tibble(na_matrix)
+  match_output_tbl <- as_tibble(na_matrix, .name_repair="minimal")
   
   # create column names based on input value for number of matches
   column_names <- c("target_record",paste0("match_", 1:max_matches))
@@ -142,6 +143,7 @@ create_string_match_tbl_for_results <- function(search_result_tbl,
                   "is", length(result_matches), sep=" "))
       print(paste("exceeds the maximum number of matches of",
                   max_matches,sep=" "))
+      beep(sound="wilhelm")
       stop("function has been aborted")
     } else {
       # create output vector to put in output tbl
@@ -158,6 +160,7 @@ create_string_match_tbl_for_results <- function(search_result_tbl,
       match_output_tbl[i,] <- t(output_vec) #for some reason this needs to be transposed
     }
   }
+  beep(sound="complete")
   return(match_output_tbl)
 }
 
@@ -232,12 +235,12 @@ user_comfirmation_of_matches <- function(match_tbl, record_tbl) {
     
     #if statement for number of matches==0 and number of matches>0
     if(match_record_num==0){
-      Sys.sleep(0.5) #add pause so it doesn't hurt my brain
+      #Sys.sleep(0.5) #add pause so it doesn't hurt my brain
       #Send text for no matching records to the console
       cat("......................\n")
       cat("No matching records found\n")
       cat("=======================\n")
-      Sys.sleep(0.5) #add pause so it doesn't hurt my brain
+      #Sys.sleep(0.5) #add pause so it doesn't hurt my brain
     } else {
       #loop through all matches
       for (j in 1:match_record_num) {
@@ -260,7 +263,7 @@ user_comfirmation_of_matches <- function(match_tbl, record_tbl) {
         } else if (diss_dist==0 & target_title_length>4) {
           #If the titles of the target and the match are identical, no evaluation needed
           #print to the console and move on without any changes to the match_tbl
-          Sys.sleep(0.5) #add pause so it doesn't hurt my brain
+          #Sys.sleep(0.5) #add pause so it doesn't hurt my brain
           cat("=======================\n")
           cat("EXACT MATCH. YAY!!!\n")
           cat("......................\n")
@@ -271,15 +274,16 @@ user_comfirmation_of_matches <- function(match_tbl, record_tbl) {
           cat("Match is retained. No user input needed.\n")
           cat("=======================\n")
           
-          Sys.sleep(0.5) #add pause so it doesn't hurt my brain
+          #Sys.sleep(0.5) #add pause so it doesn't hurt my brain
         } else {
           #send target record information to the console
-          Sys.sleep(0.5) #add pause so it doesn't hurt my brain
+          #Sys.sleep(0.5) #add pause so it doesn't hurt my brain
+          #beep(sound=1)
           cat("=======================\n")
           cat("Target Record:\n")
           target_command_line_text <- assemble_record_output(target_record_tbl)
           format_text_for_console(target_command_line_text)
-          Sys.sleep(0.5) #add pause so it doesn't hurt my brain
+          #Sys.sleep(0.5) #add pause so it doesn't hurt my brain
           
           #send match record information to the console
           cat("......................\n")
@@ -288,7 +292,7 @@ user_comfirmation_of_matches <- function(match_tbl, record_tbl) {
           format_text_for_console(match_command_line_text)
           cat("=======================\n")
           
-          Sys.sleep(0.5) #add pause so it doesn't hurt my brain
+          #Sys.sleep(0.5) #add pause so it doesn't hurt my brain
           input_value <- take_user_input()
           
           #if the user says that something isn't a match, set that to NA in 
@@ -297,7 +301,7 @@ user_comfirmation_of_matches <- function(match_tbl, record_tbl) {
             confirmed_match_tbl[i,j+1] <- NA
           }
         }
-        Sys.sleep(0.75) #add pause so it doesn't hurt my brain
+        #Sys.sleep(0.75) #add pause so it doesn't hurt my brain
       }  
     }
   }
@@ -380,6 +384,7 @@ target_dir <- "./lit_search_results/test_more/"
 search_results_all_tbl <- read_search_results_from_directory(
   target_dir, output="tibble", RecordID=TRUE)
 
+# create a tibble with target recordID and record IDs for potential matches
 result_match_tbl <- create_string_match_tbl_for_results(search_results_all_tbl,
                                                         fxn='adist',
                                                         threshold=10,
