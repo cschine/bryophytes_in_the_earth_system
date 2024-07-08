@@ -232,12 +232,12 @@ user_comfirmation_of_matches <- function(match_tbl, record_tbl) {
     
     #if statement for number of matches==0 and number of matches>0
     if(match_record_num==0){
-      Sys.sleep(0.5) #add pause so it doesn't hurt my brain
+      #Sys.sleep(0.5) #add pause so it doesn't hurt my brain
       #Send text for no matching records to the console
       cat("......................\n")
       cat("No matching records found\n")
       cat("=======================\n")
-      Sys.sleep(0.5) #add pause so it doesn't hurt my brain
+      #Sys.sleep(0.5) #add pause so it doesn't hurt my brain
     } else {
       #loop through all matches
       for (j in 1:match_record_num) {
@@ -260,7 +260,7 @@ user_comfirmation_of_matches <- function(match_tbl, record_tbl) {
         } else if (diss_dist==0 & target_title_length>4) {
           #If the titles of the target and the match are identical, no evaluation needed
           #print to the console and move on without any changes to the match_tbl
-          Sys.sleep(0.5) #add pause so it doesn't hurt my brain
+          #Sys.sleep(0.5) #add pause so it doesn't hurt my brain
           cat("=======================\n")
           cat("EXACT MATCH. YAY!!!\n")
           cat("......................\n")
@@ -271,7 +271,7 @@ user_comfirmation_of_matches <- function(match_tbl, record_tbl) {
           cat("Match is retained. No user input needed.\n")
           cat("=======================\n")
           
-          Sys.sleep(0.5) #add pause so it doesn't hurt my brain
+          #Sys.sleep(0.5) #add pause so it doesn't hurt my brain
         } else {
           #send target record information to the console
           Sys.sleep(0.5) #add pause so it doesn't hurt my brain
@@ -279,7 +279,7 @@ user_comfirmation_of_matches <- function(match_tbl, record_tbl) {
           cat("Target Record:\n")
           target_command_line_text <- assemble_record_output(target_record_tbl)
           format_text_for_console(target_command_line_text)
-          Sys.sleep(0.5) #add pause so it doesn't hurt my brain
+          #Sys.sleep(0.5) #add pause so it doesn't hurt my brain
           
           #send match record information to the console
           cat("......................\n")
@@ -288,7 +288,7 @@ user_comfirmation_of_matches <- function(match_tbl, record_tbl) {
           format_text_for_console(match_command_line_text)
           cat("=======================\n")
           
-          Sys.sleep(0.5) #add pause so it doesn't hurt my brain
+          #Sys.sleep(0.5) #add pause so it doesn't hurt my brain
           input_value <- take_user_input()
           
           #if the user says that something isn't a match, set that to NA in 
@@ -297,7 +297,7 @@ user_comfirmation_of_matches <- function(match_tbl, record_tbl) {
             confirmed_match_tbl[i,j+1] <- NA
           }
         }
-        Sys.sleep(0.75) #add pause so it doesn't hurt my brain
+        #Sys.sleep(0.75) #add pause so it doesn't hurt my brain
       }  
     }
   }
