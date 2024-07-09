@@ -4,6 +4,7 @@
 library(stringr) #to trim file name strings
 library(tidyverse) #for everything
 library(stringdist) #for fuzzy string matching
+library(beepr) #for beeping to notify user of function requiring input
 
 ####################### FUNCTIONS ##############################
 # create file list for target directory 
@@ -94,7 +95,7 @@ create_string_match_tbl_for_results <- function(search_result_tbl,
   # Create a matrix filled with NA
   na_matrix <- matrix(NA, nrow = num_rows, ncol = num_cols)
   # Convert the matrix to a tibble
-  match_output_tbl <- as_tibble(na_matrix)
+  match_output_tbl <- as_tibble(na_matrix, .name_repair="minimal")
   
   # create column names based on input value for number of matches
   column_names <- c("target_record",paste0("match_", 1:max_matches))
@@ -145,6 +146,7 @@ create_string_match_tbl_for_results <- function(search_result_tbl,
                   "is", length(result_matches), sep=" "))
       print(paste("exceeds the maximum number of matches of",
                   max_matches,sep=" "))
+      beep(sound="wilhelm")
       stop("function has been aborted")
     } else {
       # create output vector to put in output tbl
@@ -161,6 +163,7 @@ create_string_match_tbl_for_results <- function(search_result_tbl,
       match_output_tbl[i,] <- t(output_vec) #for some reason this needs to be transposed
     }
   }
+  beep(sound="complete")
   return(match_output_tbl)
 }
 
@@ -280,7 +283,8 @@ user_comfirmation_of_matches <- function(match_tbl, record_tbl) {
           #Sys.sleep(0.5) #add pause so it doesn't hurt my brain
         } else {
           #send target record information to the console
-          Sys.sleep(0.5) #add pause so it doesn't hurt my brain
+          #Sys.sleep(0.5) #add pause so it doesn't hurt my brain
+          #beep(sound=1)
           cat("=======================\n")
           cat("Target Record:\n")
           target_command_line_text <- assemble_record_output(target_record_tbl)
@@ -386,6 +390,7 @@ target_dir <- "./lit_search_results/test_more/"
 search_results_all_tbl <- read_search_results_from_directory(
   target_dir, output="tibble", RecordID=TRUE)
 
+# create a tibble with target recordID and record IDs for potential matches
 result_match_tbl <- create_string_match_tbl_for_results(search_results_all_tbl,
                                                         fxn='adist',
                                                         threshold=10,
