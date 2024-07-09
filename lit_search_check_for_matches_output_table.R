@@ -7,8 +7,6 @@ library(stringdist) #for fuzzy string matching
 library(beepr) #for beeping to notify user of function requiring input
 
 ####################### FUNCTIONS ##############################
-# create file list for target directory 
-target_dir <- "./lit_search_results/moss_batch/"
 
 ### Function that takes in directory with .csv files from individual searches
 #from PoP and outputs either a tibble or a list of all the results
@@ -83,11 +81,8 @@ read_search_results_from_directory <- function(directory_string,
 
 ### Function to check for matches within each set of results, takes in tibble
 create_string_match_tbl_for_results <- function(search_result_tbl,
-                                                fxn=c('adist','agrep'),
                                                 threshold=5,
-                                                max_matches=10,
-                                                length_match=FALSE,
-                                                match_length_add=5){
+                                                max_matches=10){
   
   #create empty tibble for output data for target record and potential matches
   num_rows <- nrow(search_result_tbl) #get number of rows for output tbl
@@ -112,33 +107,22 @@ create_string_match_tbl_for_results <- function(search_result_tbl,
     non_target_record_tbl <- search_result_tbl
     non_target_record_tbl[i,] <- rep(NA,ncol(non_target_record_tbl))
     
-    # search for matches using agrep() Fuzzy Matching, part of Base R package
+    # search for matches using adist() Fuzzy Matching, part of Base R package
     # uses generalized Lehvenshtein edit distance
+    # identify results that are below the threshold value
+    result_matches <- which(adist(target_record_tbl$Title, 
+                                  non_target_record_tbl$Title)<=threshold)
     
-    if (fxn=='agrep') {
-      result_matches <- agrep(target_record_tbl$Title, non_target_record_tbl$Title, 
-                              max.distance = threshold, value = FALSE)
-      result_matches_names <- agrep(target_record_tbl$Title, non_target_record_tbl$Title, 
-                                    max.distance = threshold, value = TRUE)
-    } else if (fxn=='adist') {
-      result_matches <- which(adist(target_record_tbl$Title, non_target_record_tbl$Title)<=threshold)
-      result_matches_tbl <- non_target_record_tbl %>%
-        slice(result_matches)
-      result_matches_names <- result_matches_tbl$Title
-    }
-
-    if (length_match==TRUE){
-      if (length(result_matches>0)){
-        allowable_target_title_length <- match_length_add+
-          length(str_split_1(target_record_tbl$Title," "))
-        for (j in 1:length(result_matches_names)) {
-          match_title_length <- length(str_split_1(result_matches_names[j]," "))
-          if (match_title_length>allowable_target_title_length) {
-            result_matches[j] <- NA
-          }
-        }
-        result_matches <- result_matches[!is.na(result_matches)]
-      }
+    #See if a match has already been identified
+    # identify lowest record ID in matches
+    minimum_match_ID <- min(result_matches)
+    # if the minimum record ID in matches is lower than the target record
+    #then look to see if there are any differences between the match sets identified
+    if (length(result_matches) > 0 & minimum_match_ID < i) {
+      min_match_matches_vec <- as_vector(match_output_tbl[minimum_match_ID,])
+      target_and_matches_vec <- c(i,result_matches)
+      new_matches <- setdiff(target_and_matches_vec,min_match_matches_vec)
+      result_matches <- new_matches
     }
     
     if (length(result_matches)>max_matches){
@@ -163,12 +147,10 @@ create_string_match_tbl_for_results <- function(search_result_tbl,
       match_output_tbl[i,] <- t(output_vec) #for some reason this needs to be transposed
     }
   }
-  beep(sound="complete")
+  beep(sound="coin")
   return(match_output_tbl)
 }
 
-
-write.csv(result_match_tbl, "./lit_search_results/moss_batch_initial_match_tbl.csv")
 
 
 ### sub functions to call in match checking function
@@ -392,11 +374,10 @@ search_results_all_tbl <- read_search_results_from_directory(
 
 # create a tibble with target recordID and record IDs for potential matches
 result_match_tbl <- create_string_match_tbl_for_results(search_results_all_tbl,
-                                                        fxn='adist',
                                                         threshold=10,
-                                                        max_matches=24,
-                                                        length_match=TRUE,
-                                                        match_length_add=5)
+                                                        max_matches=24)
+
+write.csv(result_match_tbl, "./lit_search_results/moss_batch_initial_match_tbl.csv")
 
 confirmed_match_tbl <- user_comfirmation_of_matches(result_match_tbl, search_results_all_tbl)
 
