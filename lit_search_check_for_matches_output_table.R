@@ -7,8 +7,6 @@ library(stringdist) #for fuzzy string matching
 library(beepr) #for beeping to notify user of function requiring input
 
 ####################### FUNCTIONS ##############################
-# create file list for target directory 
-target_dir <- "./lit_search_results/moss_batch/"
 
 ### Function that takes in directory with .csv files from individual searches
 #from PoP and outputs either a tibble or a list of all the results
@@ -83,11 +81,8 @@ read_search_results_from_directory <- function(directory_string,
 
 ### Function to check for matches within each set of results, takes in tibble
 create_string_match_tbl_for_results <- function(search_result_tbl,
-                                                fxn=c('adist','agrep'),
                                                 threshold=5,
-                                                max_matches=10,
-                                                length_match=FALSE,
-                                                match_length_add=5){
+                                                max_matches=10){
   
   #create empty tibble for output data for target record and potential matches
   num_rows <- nrow(search_result_tbl) #get number of rows for output tbl
@@ -112,33 +107,22 @@ create_string_match_tbl_for_results <- function(search_result_tbl,
     non_target_record_tbl <- search_result_tbl
     non_target_record_tbl[i,] <- rep(NA,ncol(non_target_record_tbl))
     
-    # search for matches using agrep() Fuzzy Matching, part of Base R package
+    # search for matches using adist() Fuzzy Matching, part of Base R package
     # uses generalized Lehvenshtein edit distance
+    # identify results that are below the threshold value
+    result_matches <- which(adist(target_record_tbl$Title, 
+                                  non_target_record_tbl$Title)<=threshold)
     
-    if (fxn=='agrep') {
-      result_matches <- agrep(target_record_tbl$Title, non_target_record_tbl$Title, 
-                              max.distance = threshold, value = FALSE)
-      result_matches_names <- agrep(target_record_tbl$Title, non_target_record_tbl$Title, 
-                                    max.distance = threshold, value = TRUE)
-    } else if (fxn=='adist') {
-      result_matches <- which(adist(target_record_tbl$Title, non_target_record_tbl$Title)<=threshold)
-      result_matches_tbl <- non_target_record_tbl %>%
-        slice(result_matches)
-      result_matches_names <- result_matches_tbl$Title
-    }
-
-    if (length_match==TRUE){
-      if (length(result_matches>0)){
-        allowable_target_title_length <- match_length_add+
-          length(str_split_1(target_record_tbl$Title," "))
-        for (j in 1:length(result_matches_names)) {
-          match_title_length <- length(str_split_1(result_matches_names[j]," "))
-          if (match_title_length>allowable_target_title_length) {
-            result_matches[j] <- NA
-          }
-        }
-        result_matches <- result_matches[!is.na(result_matches)]
-      }
+    #See if a match has already been identified
+    # identify lowest record ID in matches
+    minimum_match_ID <- min(result_matches)
+    # if the minimum record ID in matches is lower than the target record
+    #then look to see if there are any differences between the match sets identified
+    if (length(result_matches) > 0 & minimum_match_ID < i) {
+      min_match_matches_vec <- as_vector(match_output_tbl[minimum_match_ID,])
+      target_and_matches_vec <- c(i,result_matches)
+      new_matches <- setdiff(target_and_matches_vec,min_match_matches_vec)
+      result_matches <- new_matches
     }
     
     if (length(result_matches)>max_matches){
@@ -163,12 +147,10 @@ create_string_match_tbl_for_results <- function(search_result_tbl,
       match_output_tbl[i,] <- t(output_vec) #for some reason this needs to be transposed
     }
   }
-  beep(sound="complete")
+  beep(sound="coin")
   return(match_output_tbl)
 }
 
-
-write.csv(result_match_tbl, "./lit_search_results/moss_batch_initial_match_tbl.csv")
 
 
 ### sub functions to call in match checking function
@@ -323,7 +305,8 @@ user_comfirmation_of_matches <- function(match_tbl, record_tbl) {
 # where record number is higher than match
 remove_duplicate_records <- function(match_tbl, record_tbl){
   #create empty tibble with correct column names for output of records
-  output_tbl <- tibble()
+  keep_tbl <- tibble()
+  duplicate_vec <- vector()
     
   #create error and abort function if number of matches and 
   # number of records are not the same
@@ -337,51 +320,76 @@ remove_duplicate_records <- function(match_tbl, record_tbl){
   # loop though each target record
   #for (i in 1:nrow(match_tbl)){
   for (i in 1:10) {
-    # get target record information from search result tibble
-    target_record_id <- match_tbl$target_record[i]
-    target_record_tbl <-record_tbl %>% filter(RecordID==target_record_id)
     
-    #get vector of match RecordIDs for target record
-    match_record_id_vec <- as.vector(match_tbl[i,2:ncol(match_tbl)])
-    #remove NAs and get total number of matches to use in match for loop
-    match_record_num <- length(match_record_id_vec[!is.na(match_record_id_vec)])
+    target_record_num <- record_tbl$RecordID[i]
     
-    #if statement so that we handle records with no matches
-    # and records with matches differently
-    if(match_record_num==0){
-      # if there are no matches output the original target record unchanged
-      output_tbl_line <- target_record_tbl
-    } else{
+    # check to see if target record has already been evaluated as a match
+    already_matched <- target_record_num %in% duplicate_vec
+    
+    # if the target record has already been evaluated as a match
+    # then print out to the console and move on to the next record
+    if (already_matched) {
       
-      new_database_str <- target_record_tbl$Database
-      new_search_terms_str <- target_record_tbl$SearchTerms
+      cat(paste("Record # ", i, " has alread been evaluated as a match \n"))
+      cat(paste(">>> Record has been recorded as duplicate and removed"))
       
-      for (j in 1:match_record_num) {
-        #amend target record with additional information on search terms and databases
-        # number of searches that turned it up
-        #remove duplicate record in output_tbl
+    } else {
+      # get target record information from search result tibble
+      target_record_id <- match_tbl$target_record[i]
+      target_record_tbl <-record_tbl %>% filter(RecordID==target_record_id)
+      
+      #get vector of match RecordIDs for target record
+      match_record_id_vec <- as.vector(match_tbl[i,2:ncol(match_tbl)])
+      
+      #remove NAs and get total number of matches to use in match for loop
+      match_record_num <- length(match_record_id_vec[!is.na(match_record_id_vec)])
+      
+      #if statement so that we handle records with no matches
+      # and records with matches differently
+      if(match_record_num==0){
+        # if there are no matches output the original target record unchanged
+        output_tbl_line <- target_record_tbl
+      } else {
+        output_tbl_line <- target_record_tbl
         
-        #get match record information from search result tibble
-        match_record_id <- match_record_id_vec[j]
-        match_record_tbl <-record_tbl %>% filter(RecordID==match_record_id)
+        # add matches to vector of duplicates that have already been evaluated and removed
+        match_vec_narm <- as_vector(match_record_id_vec[!is.na(match_record_id_vec)])
+        duplicate_vec <- c(duplicate_vec,match_vec_narm)
         
-        new_database_str <- paste(new_database_str, match_record_tbl$Database, sep=",")
-        new_search_terms_str <- paste(new_search_terms_str, match_record_tbl$SearchTerms, sep=",")
+        # set new string variables equal to existing target strings
+        # will add to these strings in the match for loop
+        new_database_str <- target_record_tbl$Database
+        new_search_terms_str <- target_record_tbl$SearchTerms
         
-        
+        for (j in 1:match_record_num) { #loop through matches
+          #amend target record with additional information on search terms and databases
+          # number of searches that turned it up
+          # remove duplicate record in output_tbl
+          
+          #get match record information from search result tibble
+          match_record_id <- match_record_id_vec[j]
+          match_record_tbl <-record_tbl %>% filter(RecordID==match_record_id)
+          
+          new_database_str <- paste(new_database_str, match_record_tbl$Database, sep=",")
+          new_search_terms_str <- paste(new_search_terms_str, match_record_tbl$SearchTerms, sep=",")
+          
+        }
+        #set target record tbl fields with amended strings 
+        output_tbl_line$Database <- new_database_str
+        output_tbl_line$SearchTerms <- new_search_terms_str
       }
-      #set target record tbl fields with amended strings 
-      target_record_tbl$Database <- new_database_str
-      target_record_tbl$SearchTerms <- new_search_terms_str
-    } 
+      keep_tbl <- rbind(keep_tbl,output_tbl_line)
+    }
   }
+  result_list <- list(keep_tibble, duplicate_vec)
+  return(result_list)
 }
 #################################################################################
 
 
 ############# Run the Functions ##############
 # create file list for target directory 
-target_dir <- "./lit_search_results/test_more/"
+target_dir <- "./lit_search_results/bryophyte_batch/"
 
 # create list of all search results in target directory
 #search_results_list <- read_search_results_from_directory(target_dir, output="list")
@@ -392,11 +400,10 @@ search_results_all_tbl <- read_search_results_from_directory(
 
 # create a tibble with target recordID and record IDs for potential matches
 result_match_tbl <- create_string_match_tbl_for_results(search_results_all_tbl,
-                                                        fxn='adist',
                                                         threshold=10,
-                                                        max_matches=24,
-                                                        length_match=TRUE,
-                                                        match_length_add=5)
+                                                        max_matches=24)
+
+write.csv(result_match_tbl, "./lit_search_results/moss_batch_initial_match_tbl.csv")
 
 confirmed_match_tbl <- user_comfirmation_of_matches(result_match_tbl, search_results_all_tbl)
 
