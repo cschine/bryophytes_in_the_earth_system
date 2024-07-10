@@ -2,8 +2,8 @@
 library(stringr) #to trim file name strings
 library(tidyverse)
 library(stringdist) #for fuzzy string matching
-#locate data
-target_dir <- "./lit_search_results/moss_batch/"
+
+########FUNCTIONS#########
 
 ### Function that takes in directory with .csv files from individual searches
 #from PoP and outputs either a tibble or a list of all the results
@@ -76,19 +76,6 @@ read_search_results_from_directory <- function(directory_string,
   }
 }
 
-# create list of all search results in target directory
-search_results_list <- read_search_results_from_directory(target_dir, output="list")
-
-# create tibble of all search results in target directory
-search_results_all_tbl <- read_search_results_from_directory(
-  target_dir, output="tibble", RecordID=TRUE)
-
-#make a new tbl of just the first 10 rows of a search result tbl
-tiny_tbl <- search_results_all_tbl |> 
-  slice_head(n = 10) 
-
-tiny_tbl_row <- tiny_tbl |> 
-  slice(1)
 
 ### sub functions to call in match checking function
 # function for assembling lines of text from a record
@@ -125,25 +112,40 @@ format_text_for_console <- function(text_vector_) {
   }
 }
 
-#----------------My piece of code
-  
+#function to take command line input on record matches
+take_user_input_flag <- function (prompt = "Reason for removal (1/2/3/4)") {
+  # Prompt the user and read input from command line
+  input_flag <- readline (prompt)
+  if (input_flag!="1" & input_flag!="2" & input_flag!="3" & input_flag!="4") {
+    cat(paste(input_flag," is not a valid response\n"))
+    cat("Enter 1, 2, 3, or 4 \n")
+    input <- readline(prompt)
+  } else {
+    cat(paste("You entered: ", input_flag, "\n"))
+    # Return the input
+    return(input_flag)
+  }
+}
+
 #function to take user input on relevance and output tibble of confirmed relevance
 #input tibbles must match the format output by the previous 2 functions
-user_confirmation_of_relevance <- function(tiny_tbl) {
-
+user_confirmation_of_relevance <- function(cull_tbl) {
+  
+  #create empty list to fill with confirmed_relevant_tbl and confirmed_irrelevant_tbl
+  confirmed_list <- list()
+  
   #create new match tbl with only confirmed matches
-  confirmed_relevant_tbl <- tiny_tbl
+  confirmed_relevant_tbl <- cull_tbl
+  #create new match tbl for Irrelevant searches
+  confirmed_irrelevant_tbl <- cull_tbl |> 
+    add_column(Removal_Flag = NA)
   
   # loop though each target record
-  for (i in 1:nrow(tiny_tbl)){
-    #for (i in 11:15) {
+  for (i in 1:nrow(cull_tbl)){
     # get target record information from search result tibble
-    target_record_tbl <-tiny_tbl %>% slice(i)
-   # target_record <- tiny_tbl$RecordID[i]
-    #target_record_id <- tiny_tbl$target_record[i]
-    #target_record_tbl <-tiny_tbl %>% filter(RecordID==target_record_id)
-   
-     #send target record information to the console
+    target_record_tbl <-cull_tbl %>% slice(i)
+    
+    #send target record information to the console
     cat("......................\n")
     cat(paste ("Record ", " Record:\n"))
     relevance_command_line_text <- assemble_record_output(target_record_tbl)
@@ -152,18 +154,42 @@ user_confirmation_of_relevance <- function(tiny_tbl) {
     
     Sys.sleep(0.5) #add pause so it doesn't hurt my brain
     input_value <- take_user_input()
-  
-    #if the user says that something isn't a match, set that to NA in 
-  #match output table
-   if (input_value=="n") {
-    confirmed_relevant_tbl[i,] <- NA
-   } else if (input_value=="y") {
-      
+    
+    #if the user confirms that something isn't relevant, set that to NA in 
+    #relevant-tbl HOW to specify input
+    if (input_value=="n") {
+      flag_value <- take_user_input_flag()
+      confirmed_irrelevant_tbl$Removal_Flag[i] <- flag_value
+      confirmed_relevant_tbl[i,] <- NA
+    } else if (input_value=="y") {
+      confirmed_irrelevant_tbl[i,] <- NA
     }
-  } 
-  #included omitting NA rows - irrelevent records
-  return(na.omit(confirmed_relevant_tbl))
+  }
+  #create list
+  confirmed_list <- list(na.omit(confirmed_relevant_tbl),
+                         na.omit(confirmed_irrelevant_tbl))
+  #return the list of both tbls
+  return(confirmed_list)
 }
+
+######CALL FUNCTIONS#######
+
+#locate data
+target_dir <- "./lit_search_results/moss_batch_confirmed_match_tbl/"
+
+# create list of all search results in target directory
+search_results_list <- read_search_results_from_directory(target_dir, output="list")
+
+# create tibble of all search results in target directory
+search_results_all_tbl <- read_search_results_from_directory(
+  target_dir, output="tibble", RecordID=TRUE)
+
+#make a new tbl of just the first 10 rows of a search result tbl
+tiny_tbl <- search_results_all_tbl |> 
+  slice_head(n = 50) 
+
+tiny_tbl_row <- tiny_tbl |> 
+  slice(1)
 
 confirmed_relevant_tbl <- user_confirmation_of_relevance(tiny_tbl)
 
