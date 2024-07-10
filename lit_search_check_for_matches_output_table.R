@@ -305,7 +305,8 @@ user_comfirmation_of_matches <- function(match_tbl, record_tbl) {
 # where record number is higher than match
 remove_duplicate_records <- function(match_tbl, record_tbl){
   #create empty tibble with correct column names for output of records
-  output_tbl <- tibble()
+  keep_tbl <- tibble()
+  duplicate_vec <- vector()
     
   #create error and abort function if number of matches and 
   # number of records are not the same
@@ -319,44 +320,69 @@ remove_duplicate_records <- function(match_tbl, record_tbl){
   # loop though each target record
   #for (i in 1:nrow(match_tbl)){
   for (i in 1:10) {
-    # get target record information from search result tibble
-    target_record_id <- match_tbl$target_record[i]
-    target_record_tbl <-record_tbl %>% filter(RecordID==target_record_id)
     
-    #get vector of match RecordIDs for target record
-    match_record_id_vec <- as.vector(match_tbl[i,2:ncol(match_tbl)])
-    #remove NAs and get total number of matches to use in match for loop
-    match_record_num <- length(match_record_id_vec[!is.na(match_record_id_vec)])
+    target_record_num <- record_tbl$RecordID[i]
     
-    #if statement so that we handle records with no matches
-    # and records with matches differently
-    if(match_record_num==0){
-      # if there are no matches output the original target record unchanged
-      output_tbl_line <- target_record_tbl
-    } else{
+    # check to see if target record has already been evaluated as a match
+    already_matched <- target_record_num %in% duplicate_vec
+    
+    # if the target record has already been evaluated as a match
+    # then print out to the console and move on to the next record
+    if (already_matched) {
       
-      new_database_str <- target_record_tbl$Database
-      new_search_terms_str <- target_record_tbl$SearchTerms
+      cat(paste("Record # ", i, " has alread been evaluated as a match \n"))
+      cat(paste(">>> Record has been recorded as duplicate and removed"))
       
-      for (j in 1:match_record_num) {
-        #amend target record with additional information on search terms and databases
-        # number of searches that turned it up
-        #remove duplicate record in output_tbl
+    } else {
+      # get target record information from search result tibble
+      target_record_id <- match_tbl$target_record[i]
+      target_record_tbl <-record_tbl %>% filter(RecordID==target_record_id)
+      
+      #get vector of match RecordIDs for target record
+      match_record_id_vec <- as.vector(match_tbl[i,2:ncol(match_tbl)])
+      
+      #remove NAs and get total number of matches to use in match for loop
+      match_record_num <- length(match_record_id_vec[!is.na(match_record_id_vec)])
+      
+      #if statement so that we handle records with no matches
+      # and records with matches differently
+      if(match_record_num==0){
+        # if there are no matches output the original target record unchanged
+        output_tbl_line <- target_record_tbl
+      } else {
+        output_tbl_line <- target_record_tbl
         
-        #get match record information from search result tibble
-        match_record_id <- match_record_id_vec[j]
-        match_record_tbl <-record_tbl %>% filter(RecordID==match_record_id)
+        # add matches to vector of duplicates that have already been evaluated and removed
+        match_vec_narm <- as_vector(match_record_id_vec[!is.na(match_record_id_vec)])
+        duplicate_vec <- c(duplicate_vec,match_vec_narm)
         
-        new_database_str <- paste(new_database_str, match_record_tbl$Database, sep=",")
-        new_search_terms_str <- paste(new_search_terms_str, match_record_tbl$SearchTerms, sep=",")
+        # set new string variables equal to existing target strings
+        # will add to these strings in the match for loop
+        new_database_str <- target_record_tbl$Database
+        new_search_terms_str <- target_record_tbl$SearchTerms
         
-        
+        for (j in 1:match_record_num) { #loop through matches
+          #amend target record with additional information on search terms and databases
+          # number of searches that turned it up
+          # remove duplicate record in output_tbl
+          
+          #get match record information from search result tibble
+          match_record_id <- match_record_id_vec[j]
+          match_record_tbl <-record_tbl %>% filter(RecordID==match_record_id)
+          
+          new_database_str <- paste(new_database_str, match_record_tbl$Database, sep=",")
+          new_search_terms_str <- paste(new_search_terms_str, match_record_tbl$SearchTerms, sep=",")
+          
+        }
+        #set target record tbl fields with amended strings 
+        output_tbl_line$Database <- new_database_str
+        output_tbl_line$SearchTerms <- new_search_terms_str
       }
-      #set target record tbl fields with amended strings 
-      target_record_tbl$Database <- new_database_str
-      target_record_tbl$SearchTerms <- new_search_terms_str
-    } 
+      keep_tbl <- rbind(keep_tbl,output_tbl_line)
+    }
   }
+  result_list <- list(keep_tibble, duplicate_vec)
+  return(result_list)
 }
 #################################################################################
 
