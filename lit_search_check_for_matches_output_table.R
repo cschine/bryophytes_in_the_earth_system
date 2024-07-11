@@ -104,8 +104,7 @@ create_string_match_tbl_for_results <- function(search_result_tbl,
   column_names <- c("target_record",paste0("match_", 1:max_matches))
   names(match_output_tbl) <- column_names
   
-  #for (i in 1:nrow(search_result_tbl)) {
-  for (i in 1:368) {
+  for (i in 1:nrow(search_result_tbl)) {
     #print(i)
     
     cat(paste(i, " in ", nrow(search_result_tbl), "\n", sep=""))
