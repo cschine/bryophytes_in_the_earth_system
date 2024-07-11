@@ -13,7 +13,8 @@ library(beepr) #for beeping to notify user of function requiring input
 #the recordID option is only available for a tibble
 read_search_results_from_directory <- function(directory_string, 
                                                output=c("tibble", "list"),
-                                               RecordID=TRUE) {
+                                               RecordID=TRUE,
+                                               begin_record_num=1) {
   lit_results_list <- list()
   file_list <- list.files(directory_string)
   
@@ -66,8 +67,12 @@ read_search_results_from_directory <- function(directory_string,
     result_tbl_all <- bind_rows(lit_results_list)
     #add recordID column if variable set to TRUE
     if (RecordID==TRUE) {
+      
+      number_of_records <- nrow(result_tbl_all)
+      end_record_num <- begin_record_num + number_of_records - 1
+      
       result_tbl_all <- result_tbl_all %>% 
-        add_column(RecordID=seq(from=1, to=nrow(result_tbl_all)))
+        add_column(RecordID=seq(from=begin_record_num, to=end_record_num))
     }
     #return tibble
     return(result_tbl_all)
@@ -96,11 +101,14 @@ create_string_match_tbl_for_results <- function(search_result_tbl,
   column_names <- c("target_record",paste0("match_", 1:max_matches))
   names(match_output_tbl) <- column_names
   
-  for (i in 1:nrow(search_result_tbl)) {
+  #for (i in 1:nrow(search_result_tbl)) {
+  for (i in 1:368) {
     #print(i)
+    
     cat(paste(i, " in ", nrow(search_result_tbl), "\n", sep=""))
     #define target record and select entire row
     target_record_tbl <-search_result_tbl %>% slice(i)
+    target_recordID <- target_record_tbl$RecordID
     
     #define 2nd tibble with target record fields set to NA 
     #   so we don't get a record matching to itself
@@ -110,21 +118,13 @@ create_string_match_tbl_for_results <- function(search_result_tbl,
     # search for matches using adist() Fuzzy Matching, part of Base R package
     # uses generalized Lehvenshtein edit distance
     # identify results that are below the threshold value
-    result_matches <- which(adist(target_record_tbl$Title, 
+    result_match_ind <- which(adist(target_record_tbl$Title, 
                                   non_target_record_tbl$Title)<=threshold)
+    # use the index values to retrieve the record IDs
+    result_matches <- as_vector(non_target_record_tbl$RecordID[result_match_ind])
     
-    #See if a match has already been identified
-    # identify lowest record ID in matches
-    minimum_match_ID <- min(result_matches)
-    # if the minimum record ID in matches is lower than the target record
-    #then look to see if there are any differences between the match sets identified
-    if (length(result_matches) > 0 & minimum_match_ID < i) {
-      min_match_matches_vec <- as_vector(match_output_tbl[minimum_match_ID,])
-      target_and_matches_vec <- c(i,result_matches)
-      new_matches <- setdiff(target_and_matches_vec,min_match_matches_vec)
-      result_matches <- new_matches
-    }
-    
+    # error message if there isn't enough space in the output tbl to record all
+    # of the matches. 
     if (length(result_matches)>max_matches){
       print(paste("The number of matches for Record #", i,
                   "is", length(result_matches), sep=" "))
@@ -132,20 +132,34 @@ create_string_match_tbl_for_results <- function(search_result_tbl,
                   max_matches,sep=" "))
       beep(sound="wilhelm")
       stop("function has been aborted")
-    } else {
-      # create output vector to put in output tbl
-      # get target record ID number
-      target_record <- search_result_tbl$RecordID[i]
-      # create vector of NAs of uniform length
-      output_vec <- rep(NA,num_cols)
-      # create vector of values (probably not same length as empty vector)
-      output_vals <- c(target_record, result_matches)
-      # add values to NA vector  
-      output_vec[1:length(output_vals)] <- output_vals
-      
-      #add vector to correct spot in output tibble
-      match_output_tbl[i,] <- t(output_vec) #for some reason this needs to be transposed
     }
+    
+    #See if a match has already been identified
+    if (length(result_matches) > 0) {
+      # identify lowest record ID in matches
+      minimum_match_ID <- min(result_matches)
+      if (minimum_match_ID < target_recordID) {
+        # if the minimum record ID in matches is lower than the target record
+        #then look to see if there are any differences between the match sets identified
+        min_match_ind<- which(match_output_tbl$target_record==minimum_match_ID)
+        min_match_matches_vec <- as_vector(match_output_tbl[min_match_ind,])
+        target_and_matches_vec <- c(target_recordID, result_matches)
+        new_matches <- setdiff(target_and_matches_vec, min_match_matches_vec)
+        result_matches <- new_matches
+      }
+    } 
+    
+    # create output vector to put in output tbl
+    # create vector of NAs of uniform length
+    output_vec <- rep(NA,num_cols)
+    # create vector of values (probably not same length as empty vector)
+    output_vals <- c(target_recordID, result_matches)
+    # add values to NA vector  
+    output_vec[1:length(output_vals)] <- output_vals
+      
+    #add vector to correct spot in output tibble
+    match_output_tbl[i,] <- t(output_vec) #for some reason this needs to be transposed
+    
   }
   beep(sound="coin")
   return(match_output_tbl)
@@ -396,7 +410,7 @@ target_dir <- "./lit_search_results/test_more/"
 
 # create tibble of all search results in target directory
 search_results_all_tbl <- read_search_results_from_directory(
-  target_dir, output="tibble", RecordID=TRUE)
+  target_dir, output="tibble", RecordID=TRUE, begin_record_num=2000)
 
 # create a tibble with target recordID and record IDs for potential matches
 result_match_tbl <- create_string_match_tbl_for_results(search_results_all_tbl,
