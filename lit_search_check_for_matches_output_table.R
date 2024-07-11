@@ -323,7 +323,7 @@ remove_duplicate_records <- function(match_tbl, record_tbl){
   #create empty tibble with correct column names for output of records
   keep_tbl <- tibble()
   duplicate_vec <- vector()
-    
+  
   #create error and abort function if number of matches and 
   # number of records are not the same
   if(nrow(match_tbl)!=nrow(record_tbl)){
@@ -334,25 +334,24 @@ remove_duplicate_records <- function(match_tbl, record_tbl){
   }
   
   # loop though each target record
-  #for (i in 1:nrow(match_tbl)){
-  for (i in 1:10) {
+  for (i in 1:nrow(match_tbl)){
+    #for (i in 1:100) {
     
-    target_record_num <- record_tbl$RecordID[i]
+    target_recordID <- match_tbl$target_record[i]
     
     # check to see if target record has already been evaluated as a match
-    already_matched <- target_record_num %in% duplicate_vec
+    already_matched <- target_recordID %in% duplicate_vec
     
     # if the target record has already been evaluated as a match
     # then print out to the console and move on to the next record
     if (already_matched) {
       
-      cat(paste("Record # ", i, " has alread been evaluated as a match \n"))
-      cat(paste(">>> Record has been recorded as duplicate and removed"))
+      cat(paste("Record # ", target_recordID, " has alread been evaluated as a match \n"))
+      cat(paste(">>> Record has been recorded as duplicate and removed \n"))
       
     } else {
       # get target record information from search result tibble
-      target_record_id <- match_tbl$target_record[i]
-      target_record_tbl <-record_tbl %>% filter(RecordID==target_record_id)
+      target_record_tbl <-record_tbl %>% filter(RecordID==target_recordID)
       
       #get vector of match RecordIDs for target record
       match_record_id_vec <- as.vector(match_tbl[i,2:ncol(match_tbl)])
@@ -397,7 +396,8 @@ remove_duplicate_records <- function(match_tbl, record_tbl){
       keep_tbl <- rbind(keep_tbl,output_tbl_line)
     }
   }
-  result_list <- list(keep_tibble, duplicate_vec)
+  result_list <- list(keep_tbl, duplicate_vec)
   return(result_list)
 }
+
 #################################################################################
