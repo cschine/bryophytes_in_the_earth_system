@@ -152,7 +152,7 @@ write.csv(syntrichia_result_match_tbl, "./lit_search_results/syntrichia_batch_in
 
 syntrichia_confirmed_match_tbl <- user_comfirmation_of_matches(syntrichia_result_match_tbl, syntrichia_search_results_all_tbl)
 
-write.csv(syntrichia_confirmed_match_tbl, "./lit_search_results/syntrichiabatch_confirmed_match_tbl.csv")
+write.csv(syntrichia_confirmed_match_tbl, "./lit_search_results/syntrichia_batch_confirmed_match_tbl.csv")
 
 syntrichia_deduplicated_results_tbl <- remove_duplicate_records(syntrichia_confirmed_match_tbl,syntrichia_search_results_all_tbl)
 
