@@ -126,3 +126,35 @@ write.csv(pleurozium_confirmed_match_tbl, "./lit_search_results/pleurozium_batch
 pleurozium_deduplicated_results_tbl <- remove_duplicate_records(pleurozium_confirmed_match_tbl,pleurozium_search_results_all_tbl)
 
 write.csv(pleurozium_deduplicated_results_tbl[[1]], "./lit_search_results/pleurozium_batch_deduplicated_result_tbl.csv")
+
+####### SYNTRICHIA ########
+
+#### Read in the functions ####
+source("lit_search_check_for_matches_output_table.R")
+
+############# Run the Functions ##############
+# create file list for target directory 
+target_dir <- "./lit_search_results/syntrichia_batch/"
+
+# create list of all search results in target directory
+#search_results_list <- read_search_results_from_directory(target_dir, output="list")
+
+# create tibble of all search results in target directory
+syntrichia_search_results_all_tbl <- read_search_results_from_directory(
+  target_dir, output="tibble", RecordID=TRUE, begin_record_num=100000)
+
+# create a tibble with target recordID and record IDs for potential matches
+syntrichia_result_match_tbl <- create_string_match_tbl_for_results(syntrichia_search_results_all_tbl,
+                                                                   threshold=10,
+                                                                   max_matches=100)
+
+write.csv(syntrichia_result_match_tbl, "./lit_search_results/syntrichia_batch_initial_match_tbl.csv")
+
+syntrichia_confirmed_match_tbl <- user_comfirmation_of_matches(syntrichia_result_match_tbl, syntrichia_search_results_all_tbl)
+
+write.csv(pleurozium_confirmed_match_tbl, "./lit_search_results/pleurozium_batch_confirmed_match_tbl.csv")
+
+syntrichia_deduplicated_results_tbl <- remove_duplicate_records(syntrichia_confirmed_match_tbl,syntrichia_search_results_all_tbl)
+
+write.csv(syntrichia_deduplicated_results_tbl[[1]], "./lit_search_results/syntrichia_batch_deduplicated_result_tbl.csv")
+
