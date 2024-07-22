@@ -17,7 +17,7 @@ deduplicated_file_names <-list.files(deduplicated_file_path)
 
 # create tbl for data
 data_tbl <- tribble(
-  ~"batch", ~"initial # of entries", ~"de-duplicated # of entries"
+  ~"batch", ~"initial # of entries", ~"de-duplicated # of entries", ~"% records kept"
 )
 
 
@@ -41,14 +41,15 @@ for(i in 1:length(initial_file_names)) {
   #read.csv to read in initial file
   initial_row_number <- nrow(initial_file[i]) 
   deduplicated_row_number <- nrow(deduplicated_file[i])
+  percent_kept <- deduplicated_row_number / initial_row_number*100
+  
   #check row numbers
   print(paste(initial_row_number, deduplicated_row_number))
   
-  add_row (data_tbl, 
-          batch = batch_name, 
-          `initial # of entries`= initial_row_number, 
-          `de-duplicated # of entries`= deduplicated_row_number )
-}
+  row_add <- tribble( ~"batch", ~"initial # of entries", ~"de-duplicated # of entries", ~"% records kept",
+    batch_name, initial_row_number, deduplicated_row_number, percent_kept)
 
+  data_tbl <- rbind(data_tbl, row_add)
+}
 
 
