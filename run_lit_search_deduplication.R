@@ -220,3 +220,34 @@ write.csv(biocrust_confirmed_match_tbl, "./lit_search_results/biocrust_batch_con
 biocrust_deduplicated_results_tbl <- remove_duplicate_records(biocrust_confirmed_match_tbl,biocrust_search_results_all_tbl)
 
 write.csv(biocrust_deduplicated_results_tbl[[1]], "./lit_search_results/batch_deduplicated_result_tbls/biocrust_batch_deduplicated_result_tbl.csv")
+
+####### PEAT ########
+
+#### Read in the functions ####
+source("lit_search_check_for_matches_output_table.R")
+
+############# Run the Functions ##############
+# create file list for target directory 
+target_dir <- "./lit_search_results/peat_batch/"
+
+# create list of all search results in target directory
+#search_results_list <- read_search_results_from_directory(target_dir, output="list")
+
+# create tibble of all search results in target directory
+peat_search_results_all_tbl <- read_search_results_from_directory(
+  target_dir, output="tibble", RecordID=TRUE, begin_record_num=150000)
+
+# create a tibble with target recordID and record IDs for potential matches
+peat_result_match_tbl <- create_string_match_tbl_for_results(peat_search_results_all_tbl,
+                                                                 threshold=10,
+                                                                 max_matches=100)
+
+write.csv(peat_result_match_tbl, "./lit_search_results/batch_initial_match_tbls/peat_batch_initial_match_tbl.csv")
+
+peat_confirmed_match_tbl <- user_comfirmation_of_matches(peat_result_match_tbl, peat_search_results_all_tbl)
+
+write.csv(peat_confirmed_match_tbl, "./lit_search_results/peat_batch_confirmed_match_tbl.csv")
+
+peat_deduplicated_results_tbl <- remove_duplicate_records(peat_confirmed_match_tbl,peat_search_results_all_tbl)
+
+write.csv(peat_deduplicated_results_tbl[[1]], "./lit_search_results/batch_deduplicated_result_tbls/peat_batch_deduplicated_result_tbl.csv")
