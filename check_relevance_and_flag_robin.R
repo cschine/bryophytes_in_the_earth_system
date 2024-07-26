@@ -5,78 +5,6 @@ library(stringdist) #for fuzzy string matching
 
 ########FUNCTIONS#########
 
-### Function that takes in directory with .csv files from individual searches
-#from PoP and outputs either a tibble or a list of all the results
-#the recordID option is only available for a tibble
-read_search_results_from_directory <- function(directory_string, 
-                                               output=c("tibble", "list"),
-                                               RecordID=TRUE) {
-  lit_results_list <- list()
-  file_list <- list.files(directory_string)
-  
-  #create vector of names to apply to list of results
-  # by removing .csv at end of file name
-  result_name_vector <- str_sub(file_list, end=-5)
-  
-  for(i in 1:length(file_list)) {
-    
-    #select target file from file list
-    base_file_name <- file_list[i]
-    
-    #paste target file name together with target directory string for full path
-    full_file_path <- paste(directory_string, base_file_name, sep="")
-    
-    #read in .csv
-    result_tbl <- tibble(read.csv(full_file_path))
-    
-    #split file name string into parts to use 
-    file_name_string_parts <- str_split_1(result_name_vector[i], "_")
-    
-    #add column with database name
-    result_source <- file_name_string_parts[1]
-    if (result_source=="google"| result_source== "scopus"| result_source== "wofsci") {
-      print(paste("Database = ", result_source))
-      database_col <- rep(result_source, length=nrow(result_tbl))
-    } else { 
-      print("database string is not valid (first 6 characters of file name)")
-      print(paste("for file: ", base_file_name))
-      stop("function has been aborted")
-    }
-    
-    #create vector for search result column
-    search_terms_vector <- c(file_name_string_parts[2], file_name_string_parts[4])
-    search_terms_string <- paste(search_terms_vector, collapse="--")
-    search_terms_col <- rep(search_terms_string, length=nrow(result_tbl))
-    
-    # modify table with selected columns and added source and search information
-    result_tbl_mod <- result_tbl %>% 
-      select(Authors, Title, Year, Source, ArticleURL, 
-             Type, DOI, Cites, GSRank, QueryDate) %>%
-      add_column(Database=database_col, SearchTerms=search_terms_col)
-    
-    #place result table into list
-    lit_results_list[[i]] <- result_tbl_mod
-  }
-  
-  if (output=="tibble") {
-    #combine lists into a tibble
-    result_tbl_all <- bind_rows(lit_results_list)
-    #add recordID column if variable set to TRUE
-    if (RecordID==TRUE) {
-      result_tbl_all <- result_tbl_all %>% 
-        add_column(RecordID=seq(from=1, to=nrow(result_tbl_all)))
-    }
-    #return tibble
-    return(result_tbl_all)
-  } else {
-    #name individual list elements with file name for each set of results
-    names(lit_results_list) <- result_name_vector
-    #return the populated list
-    return(lit_results_list)
-  }
-}
-
-
 ### sub functions to call in match checking function
 # function for assembling lines of text from a record
 assemble_record_output <- function(input_tbl_row) {
@@ -90,12 +18,13 @@ assemble_record_output <- function(input_tbl_row) {
 }
 
 #function to take command line input on record matches
-take_user_input <- function (prompt = "Is this title relevant? (y/n)") {
+take_user_input <- function (prompt = "How relevant is this title? (input flag #)") {
   # Prompt the user and read input from command line
   input <- readline (prompt)
-  if (input!="y" & input!="n") {
+  if (input!="1" & input!="2" & input!="3" & input!="3.1" & input!="3.2" & input!="3.3" & input!="3.4" 
+      & input!="3.5" & input!="3.6" & input!="4" & input!="5" & input!="6") {
     cat(paste(input," is not a valid response\n"))
-    cat("Enter either y or n \n")
+    cat("Enter valid flag #")
     input <- readline(prompt)
   } else {
     cat(paste("You entered: ", input, "\n"))
@@ -112,86 +41,49 @@ format_text_for_console <- function(text_vector_) {
   }
 }
 
-#function to take command line input on record matches
-take_user_input_flag <- function (prompt = "Reason for removal (1/2/3/4)") {
-  # Prompt the user and read input from command line
-  input_flag <- readline (prompt)
-  if (input_flag!="1" & input_flag!="2" & input_flag!="3" & input_flag!="4") {
-    cat(paste(input_flag," is not a valid response\n"))
-    cat("Enter 1, 2, 3, or 4 \n")
-    input <- readline(prompt)
-  } else {
-    cat(paste("You entered: ", input_flag, "\n"))
-    # Return the input
-    return(input_flag)
-  }
-}
-
-#function to take user input on relevance and output tibble of confirmed relevance
-#input tibbles must match the format output by the previous 2 functions
-user_confirmation_of_relevance <- function(cull_tbl) {
+#function to take user input on relevance and output tibble with flag values for relevance
+user_flagging <- function(cull_tbl) {
   
-  #create empty list to fill with confirmed_relevant_tbl and confirmed_irrelevant_tbl
-  confirmed_list <- list()
-  
-  #create new match tbl with only confirmed matches
-  confirmed_relevant_tbl <- cull_tbl
-  #create new match tbl for Irrelevant searches
-  confirmed_irrelevant_tbl <- cull_tbl |> 
-    add_column(Removal_Flag = NA)
+  #create new tbl with flag column added
+  flagged_tbl <- cull_tbl |> 
+    add_column(Relevance_Flag = NA)
   
   # loop though each target record
   for (i in 1:nrow(cull_tbl)){
     # get target record information from search result tibble
     target_record_tbl <-cull_tbl %>% slice(i)
     
+    #print total number of records so we know what we're in for
+    cat(paste("Record # ", i, " of ", nrow(cull_tbl),"\n"))
+  
     #send target record information to the console
     cat("......................\n")
-    cat(paste ("Record ", " Record:\n"))
+    cat(paste ("Record ", i, " Record:\n"))
     relevance_command_line_text <- assemble_record_output(target_record_tbl)
     format_text_for_console(relevance_command_line_text)
     cat("=======================\n")
     
-    Sys.sleep(0.5) #add pause so it doesn't hurt my brain
-    input_value <- take_user_input()
-    
-    #if the user confirms that something isn't relevant, set that to NA in 
-    #relevant-tbl HOW to specify input
-    if (input_value=="n") {
-      flag_value <- take_user_input_flag()
-      confirmed_irrelevant_tbl$Removal_Flag[i] <- flag_value
-      confirmed_relevant_tbl[i,] <- NA
-    } else if (input_value=="y") {
-      confirmed_irrelevant_tbl[i,] <- NA
-    }
+    #store flag value in relevance flag column
+    flag_value <- take_user_input()
+    flagged_tbl$Relevance_Flag[i] <- flag_value
   }
-  #create list
-  confirmed_list <- list(na.omit(confirmed_relevant_tbl),
-                         na.omit(confirmed_irrelevant_tbl))
-  #return the list of both tbls
-  return(confirmed_list)
+  #return the data with flags assigned
+  return(flagged_tbl)
 }
+
 
 ######CALL FUNCTIONS#######
 
-#locate data
-target_dir <- "./lit_search_results/moss_batch_confirmed_match_tbl/"
+#set path to desired file
+directory_path <- "./lit_search_results/batch_deduplicated_result_tbls/"
+file_name <- "biocrust_batch_deduplicated_result_tbl.csv"
+target_batch <- read.csv(paste(directory_path, file_name, sep=""))
 
-# create list of all search results in target directory
-search_results_list <- read_search_results_from_directory(target_dir, output="list")
+#smaller batch to test functionality
+test_batch <- target_batch |> slice_head(n = 10)
 
-# create tibble of all search results in target directory
-search_results_all_tbl <- read_search_results_from_directory(
-  target_dir, output="tibble", RecordID=TRUE)
-
-#make a new tbl of just the first 10 rows of a search result tbl
-tiny_tbl <- search_results_all_tbl |> 
-  slice_head(n = 50) 
-
-tiny_tbl_row <- tiny_tbl |> 
-  slice(1)
-
-confirmed_relevant_tbl <- user_confirmation_of_relevance(tiny_tbl)
+#run the function
+culled_batch <- user_flagging(target_batch)
 
 
 
