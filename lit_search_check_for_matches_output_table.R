@@ -346,7 +346,7 @@ remove_duplicate_records <- function(match_tbl, record_tbl){
     # then print out to the console and move on to the next record
     if (already_matched) {
       
-      cat(paste("Record # ", target_recordID, " has alread been evaluated as a match \n"))
+      cat(paste("Record # ", target_recordID, " has already been evaluated as a match \n"))
       cat(paste(">>> Record has been recorded as duplicate and removed \n"))
       
     } else {
@@ -382,7 +382,7 @@ remove_duplicate_records <- function(match_tbl, record_tbl){
           # remove duplicate record in output_tbl
           
           #get match record information from search result tibble
-          match_record_id <- match_record_id_vec[j]
+          match_record_id <- match_vec_narm[j]
           match_record_tbl <-record_tbl %>% filter(RecordID==match_record_id)
           
           new_database_str <- paste(new_database_str, match_record_tbl$Database, sep=",")
