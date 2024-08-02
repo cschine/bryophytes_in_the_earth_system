@@ -183,15 +183,15 @@ user_comfirmation_of_matches <- function(match_tbl, record_tbl) {
   
   
   # loop though each target record
-  #for (i in 1:nrow(match_tbl)){
-  for (i in 1:1000) {
+  for (i in 1:nrow(match_tbl)){
+  #for (i in 1:1000) {
     # get target record information from search result tibble
     target_record_id <- match_tbl$target_record[i]
     target_record_tbl <-record_tbl %>% filter(RecordID==target_record_id)
     #parse the title string and determine length to use later
     target_title_length <- length(str_split_1(target_record_tbl$Title," "))
     #get vector of match RecordIDs for target record
-    match_record_id_vec <- as.vector(match_tbl[i,2:ncol(match_tbl)])
+    match_record_id_vec <- as.vector(match_tbl[i,3:ncol(match_tbl)])
     #remove NAs and get total number of matches to use in match for loop
     match_record_num <- length(match_record_id_vec[!is.na(match_record_id_vec)])
     
@@ -221,9 +221,9 @@ user_comfirmation_of_matches <- function(match_tbl, record_tbl) {
           cat("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n")
           error_text <- c(paste("Target Record ID ", target_record_id, 
                                 " and Match Record ID ", match_record_id, " are the same."),
-                          paste("This should not happen. Go find the problem"))
+                          paste("Setting this match to NA"))
           format_text_for_console(error_text)
-          stop("function has been aborted")
+          confirmed_match_tbl[i,j+1] <- NA
         } else if (diss_dist==0 & target_title_length>4) {
           #If the titles of the target and the match are identical, no evaluation needed
           #print to the console and move on without any changes to the match_tbl
@@ -365,15 +365,27 @@ final_batches_path <- "./lit_search_results/batch_deduplicated_result_tbls/"
 
 all_results_tbl <- read_batch_dedup_results_from_directory(final_batches_path)
 
-output_name <-"./lit_search_results/batch_initial_match_tbls/all_initial_match_tbl.csv"
-all_initial_match_tbl <- create_string_match_tbl_for_results_all(all_results_tbl, 
-                                            threshold=10, 
-                                            max_matches=1000,
-                                            output_filename=output_name)
 
-write.csv(all_initial_match_tbl, "./lit_search_results/batch_initial_match_tbls/all_initial_match_tbl.csv")
+
+output_name <-"./lit_search_results/batch_initial_match_tbls/all_initial_match_tbl.csv"
+#all_initial_match_tbl <- create_string_match_tbl_for_results_all(all_results_tbl, 
+#                                            threshold=10, 
+#                                            max_matches=1000,
+#                                            output_filename=output_name)
+
+#write.csv(all_initial_match_tbl, "./lit_search_results/batch_initial_match_tbls/all_initial_match_tbl.csv")
 
 #still need to go through the user confirmation of matches and the duplicate removal
 # code in detail, but it looks like it should work for deduplicating all of the 
 # batches together
+
+all_initial_match_tbl <- read.csv(output_name)
+
+all_confirmed_match_tbl <- user_comfirmation_of_matches(all_initial_match_tbl, all_results_tbl)
+
+write_csv(all_confirmed_match_tbl, "./lit_search_results/batch_confirmed_match_tbls/all_confirmed_match_tbl.csv")
+
+all_deduplicated_tbl <- remove_duplicate_records(all_confirmed_match_tbl, all_results_tbl)
+
+write.csv(all_deduplicated_tbl[[1]], "./lit_search_results/all_deduplicated_result_tbl.csv")
 

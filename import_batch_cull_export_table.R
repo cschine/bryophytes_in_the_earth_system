@@ -1,4 +1,7 @@
-#Robin tries it on her own!
+#script to read in deduplicated results table
+# send each reference to the console for user flagging based on title
+# output final table with flag results
+
 library(stringr) #to trim file name strings
 library(tidyverse)
 
@@ -8,28 +11,14 @@ library(tidyverse)
 ### sub functions to call in match checking function
 # function for assembling lines of text from a record
 assemble_record_output <- function(input_tbl_row) {
+  database_string_split <- strsplit(input_tbl_row$Database,",")
+  search_num <- length(database_string_split[[1]])
   record_text <- c(paste("Title: ",input_tbl_row$Title),
                    paste("Author(s): ",input_tbl_row$Authors),
                    paste("Year: ", input_tbl_row$Year),
                    paste("Source: ", input_tbl_row$Source),
-                   paste("Databse: ", input_tbl_row$Database),
-                   paste("Search Terms: ", input_tbl_row$SearchTerms))
+                   paste("Searches: ", search_num))
   return(record_text)
-}
-
-#function to take command line input on record matches
-take_user_input <- function (prompt = "Is this title relevant? (y/n)") {
-  # Prompt the user and read input from command line
-  input <- readline (prompt)
-  if (input!="y" & input!="n") {
-    cat(paste(input," is not a valid response\n"))
-    cat("Enter either y or n \n")
-    input <- readline(prompt)
-  } else {
-    cat(paste("You entered: ", input, "\n"))
-    # Return the input
-    return(input)
-  }
 }
 
 # function to format text for console output
@@ -40,86 +29,81 @@ format_text_for_console <- function(text_vector_) {
   }
 }
 
+`%ni%` <- Negate(`%in%`) #opposite of in
+
 #function to take command line input on record matches
-take_user_input_flag <- function (prompt = "Reason for removal (1/2/3/4)") {
+take_user_input_flag <- function(prompt = "Flag value (1./2/3./4/5/6)") {
+  valid_input_flags <-c(1,1.1,1.2,1.3,2,3,3.1,3.2,3.3,3.4,4,5,6)
   # Prompt the user and read input from command line
-  input_flag <- readline (prompt)
-  if (input_flag!="1" & input_flag!="2" & input_flag!="3" & input_flag!="4") {
+  input_flag <- readline(prompt)
+  while (input_flag %ni% valid_input_flags) {
     cat(paste(input_flag," is not a valid response\n"))
-    cat("Enter 1, 2, 3, or 4 \n")
-    input <- readline(prompt)
-  } else {
-    cat(paste("You entered: ", input_flag, "\n"))
-    # Return the input
-    return(input_flag)
-  }
+    cat("Enter 1/2/3/4/5/6")
+    input_flag <- readline(prompt)
+  } 
+    
+  cat(paste("You entered: ", input_flag, "\n"))
+  # Return the input
+  return(input_flag)
+
 }
 
 #function to take user input on relevance and output tibble of confirmed relevance
 #input tibbles must match the format output by the previous 2 functions
-user_confirmation_of_relevance <- function(file_path) {
+user_flag_input <- function(file_path, output_filename) {
   
-  #read in .csv with deduplicated search result records
-  cull_tbl <- tibble(read.csv(file_path))
+  # read in .csv with deduplicated search result records
+  # two columns with row numbers have been appended to the beginning of
+  # the table, the select command removes those 
+  dedup_tbl <- tibble(read.csv(file_path)) %>% select(3:15)
   
-  #create empty list to fill with confirmed_relevant_tbl and confirmed_irrelevant_tbl
-  output_list <- list()
+  # check to see if the output file already exists
+  # if the file does not exist create a file with just the headers
+  if (!file.exists(output_filename)) {
+    dedup_colnames <- colnames(dedup_tbl)
+    flag_colnames <- c(dedup_colnames, "rel_flag")
+    
+    flag_tbl <- as_tibble(matrix(nrow = 0, ncol = length(flag_colnames)),
+                          .name_repair = ~ flag_colnames)
+    write_csv(flag_tbl, output_filename)
+  } 
   
-  #create new match tbl with only confirmed matches
-  confirmed_relevant_tbl <- cull_tbl
-  #create new match tbl for Irrelevant searches
-  confirmed_irrelevant_tbl <- cull_tbl |> 
-    add_column(Removal_Flag = NA)
+  # read in the output file
+  flag_output_tbl <- read.csv(output_filename, header=TRUE)
+  # extract the starting point from the output file
+  start_ind <- nrow(flag_output_tbl) + 1
   
   # loop though each target record
-  for (i in 1:nrow(cull_tbl)){
+  for (i in start_ind:nrow(dedup_tbl)){
     # get target record information from search result tibble
-    target_record_tbl <-cull_tbl %>% slice(i)
+    target_record_tbl <-dedup_tbl %>% slice(i)
     
     #send target record information to the console
     cat("......................\n")
-    cat(paste("Record # ", i, " of ", nrow(cull_tbl),":\n"))
+    cat(paste("Record # ", i, " of ", nrow(dedup_tbl),":\n"))
     relevance_command_line_text <- assemble_record_output(target_record_tbl)
     format_text_for_console(relevance_command_line_text)
     cat("=======================\n")
     
-    #Sys.sleep(0.5) #add pause so it doesn't hurt my brain
-    input_value <- take_user_input()
+    # take user input for flag value
+    flag_value <- take_user_input_flag()
     
-    #if the user confirms that something isn't relevant, set that to NA in 
-    #relevant-tbl HOW to specify input
-    if (input_value=="n") {
-      flag_value <- take_user_input_flag()
-      confirmed_irrelevant_tbl$Removal_Flag[i] <- flag_value
-      confirmed_relevant_tbl[i,] <- NA
-    } else if (input_value=="y") {
-      confirmed_irrelevant_tbl[i,] <- NA
-    }
+    # assemble the output line to add to the table
+    output_line <- target_record_tbl %>% bind_cols(rel_flag=flag_value)
+    
+    # add current record information to existing output file
+    write_csv(output_line, output_filename, append=TRUE)
   }
-  #create list
-  output_list <- list(na.omit(confirmed_relevant_tbl),
-                         na.omit(confirmed_irrelevant_tbl))
-  #return the list of both tbls
-  return(output_list)
+
 }
 
 ######CALL FUNCTIONS#######
 
 #locate data
-target_dir <- "./lit_search_results/moss_batch_confirmed_match_tbl/"
+all_dedup_path <- "./lit_search_results/batch_deduplicated_result_tbls/all_deduplicated_result_tbl.csv"
 
-# create tibble of all search results in target directory
-search_results_all_tbl <- read_search_results_from_directory(
-  target_dir, output="tibble", RecordID=TRUE)
+test_output_name <- "./lit_search_results/flag_tbls/test.csv"
 
-#make a new tbl of just the first 10 rows of a search result tbl
-tiny_tbl <- search_results_all_tbl |> 
-  slice_head(n = 50) 
-
-tiny_tbl_row <- tiny_tbl |> 
-  slice(1)
-
-confirmed_relevant_tbl <- user_confirmation_of_relevance(tiny_tbl)
-
+user_flag_input(all_dedup_path,test_output_name)
 
 
