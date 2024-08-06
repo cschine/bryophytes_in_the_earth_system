@@ -183,8 +183,8 @@ user_comfirmation_of_matches <- function(match_tbl, record_tbl) {
   
   
   # loop though each target record
-  for (i in 1:nrow(match_tbl)){
-    #for (i in 11:15) {
+  #for (i in 1:nrow(match_tbl)){
+  for (i in 1:1000) {
     # get target record information from search result tibble
     target_record_id <- match_tbl$target_record[i]
     target_record_tbl <-record_tbl %>% filter(RecordID==target_record_id)
@@ -368,8 +368,10 @@ all_results_tbl <- read_batch_dedup_results_from_directory(final_batches_path)
 output_name <-"./lit_search_results/batch_initial_match_tbls/all_initial_match_tbl.csv"
 all_initial_match_tbl <- create_string_match_tbl_for_results_all(all_results_tbl, 
                                             threshold=10, 
-                                            max_matches=100,
+                                            max_matches=1000,
                                             output_filename=output_name)
+
+write.csv(all_initial_match_tbl, "./lit_search_results/batch_initial_match_tbls/all_initial_match_tbl.csv")
 
 #still need to go through the user confirmation of matches and the duplicate removal
 # code in detail, but it looks like it should work for deduplicating all of the 
