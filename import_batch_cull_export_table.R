@@ -32,7 +32,7 @@ format_text_for_console <- function(text_vector_) {
 `%ni%` <- Negate(`%in%`) #opposite of in
 
 #function to take command line input on record matches
-take_user_input_flag <- function(prompt = "Flag value (1./2/3./4/5/6)") {
+take_user_input_flag <- function(prompt = "Flag value (1/2/3/4/5/6)") {
   valid_input_flags <-c(1,1.1,1.2,1.3,2,3,3.1,3.2,3.3,3.4,4,5,6)
   # Prompt the user and read input from command line
   input_flag <- readline(prompt)
@@ -101,6 +101,14 @@ user_flag_input <- function(file_path, output_filename) {
 
 #locate data
 all_dedup_path <- "./lit_search_results/batch_deduplicated_result_tbls/all_deduplicated_result_tbl.csv"
+all_dedup_tbl <- tibble(read.csv(all_dedup_path)) %>% select(3:15)
+
+#
+slice_1 <- all_dedup_tbl %>% slice(1:7425)
+slice_2 <- all_dedup_tbl %>% slice(7426:14851)
+slice_3 <- all_dedup_tbl %>% slice(14852:22276)
+slice_4 <- all_dedup_tbl %>% slice(22277:29702)
+slice_5 <- all_dedup_tbl %>% slice(29703:37126)
 
 test_output_name <- "./lit_search_results/flag_tbls/test.csv"
 
