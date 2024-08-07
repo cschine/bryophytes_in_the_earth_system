@@ -52,4 +52,7 @@ for(i in 1:length(initial_file_names)) {
   data_tbl <- rbind(data_tbl, row_add)
 }
 
+write.csv(data_tbl, "./lit_search_results/matching_data_tbl.csv")
+
+
 
