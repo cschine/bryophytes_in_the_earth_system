@@ -1,0 +1,23 @@
+FlagValue,Description
+1.1,Desiccation or hydration -- likely to be relevant. 
+1.2,Soil -- likely to be relevant. 
+1.3,Photosynthesis -- likely to be relevant. 
+1.4,Chemistry/morphology -- likely to be relevant. 
+1.5,Fits more than one category -- likely to be relevant. 
+2.1,Desiccation or hydration -- may be relevant. 
+2.2,Soil -- may be relevant. 
+2.3,Photosynthesis -- may be relevant. 
+2.4,Chemistry/morphology -- may be relevant. 
+2.5,Fits more than one category -- may be relevant. 
+3.1,Omics -- unlikely to be model relevant
+3.2,Occurrence -- unlikely to be model relevant
+3.3,Ecology -- unlikely to be model relevant
+3.4,Pigments -- unlikely to be model relevant
+3.5,Chemistry -- unlikely to be model relevant
+3.6,Bioindicator -- unlikely to be model relevant
+3.7,Non-terrestrial bryophytes -- unlikely to be model relevant
+3.8,Other uses of bryophytes -- unlikely to be model relevant
+3.9,Non-academic paper -- unlikely to be model relevant
+4,Non-english
+5,Error
+6,Irrelevant

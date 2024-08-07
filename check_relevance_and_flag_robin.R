@@ -17,17 +17,21 @@ assemble_record_output <- function(input_tbl_row) {
   return(record_text)
 }
 
+### data frame containing flag definitions
+flags <- read.csv("flag_descriptions.csv")
+flag_values<- c(flags$FlagValue)
+
 #function to take command line input on record matches
 take_user_input <- function (prompt = "How relevant is this title? (input flag #)") {
   # Prompt the user and read input from command line
   input <- readline (prompt)
-  if (input!="1" & input!="2" & input!="3" & input!="3.1" & input!="3.2" & input!="3.3" & input!="3.4" 
-      & input!="3.5" & input!="3.6" & input!="4" & input!="5" & input!="6") {
+  if (input!= 1.1 && input!= 1.2) {
     cat(paste(input," is not a valid response\n"))
     cat("Enter valid flag #")
     input <- readline(prompt)
   } else {
-    cat(paste("You entered: ", input, "\n"))
+    cat(paste("You entered: ", input, "\n", 
+              "Meaning:", flags$Description[input]))
     # Return the input
     return(input)
   }

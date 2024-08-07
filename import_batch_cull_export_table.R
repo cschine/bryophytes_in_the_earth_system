@@ -32,13 +32,13 @@ format_text_for_console <- function(text_vector_) {
 `%ni%` <- Negate(`%in%`) #opposite of in
 
 #function to take command line input on record matches
-take_user_input_flag <- function(prompt = "Flag value (1/2/3/4/5/6)") {
-  valid_input_flags <-c(1,1.1,1.2,1.3,2,3,3.1,3.2,3.3,3.4,4,5,6)
+take_user_input_flag <- function(prompt = "Relevance flag value?", flag_table) {
+  valid_input_flags <-flag_table$FlagValue
   # Prompt the user and read input from command line
   input_flag <- readline(prompt)
   while (input_flag %ni% valid_input_flags) {
     cat(paste(input_flag," is not a valid response\n"))
-    cat("Enter 1/2/3/4/5/6")
+    cat("Enter a valid flag value")
     input_flag <- readline(prompt)
   } 
     
@@ -50,7 +50,7 @@ take_user_input_flag <- function(prompt = "Flag value (1/2/3/4/5/6)") {
 
 #function to take user input on relevance and output tibble of confirmed relevance
 #input tibbles must match the format output by the previous 2 functions
-user_flag_input <- function(file_path, output_filename) {
+user_flag_input <- function(file_path, output_filename, flg_tbl) {
   
   # read in .csv with deduplicated search result records
   # two columns with row numbers have been appended to the beginning of
@@ -86,7 +86,7 @@ user_flag_input <- function(file_path, output_filename) {
     cat("=======================\n")
     
     # take user input for flag value
-    flag_value <- take_user_input_flag()
+    flag_value <- take_user_input_flag(flag_table=flg_tbl)
     
     # assemble the output line to add to the table
     output_line <- target_record_tbl %>% bind_cols(rel_flag=flag_value)
@@ -97,21 +97,5 @@ user_flag_input <- function(file_path, output_filename) {
 
 }
 
-######CALL FUNCTIONS#######
-
-#locate data
-all_dedup_path <- "./lit_search_results/batch_deduplicated_result_tbls/all_deduplicated_result_tbl.csv"
-all_dedup_tbl <- tibble(read.csv(all_dedup_path)) %>% select(3:15)
-
-#
-slice_1 <- all_dedup_tbl %>% slice(1:7425)
-slice_2 <- all_dedup_tbl %>% slice(7426:14851)
-slice_3 <- all_dedup_tbl %>% slice(14852:22276)
-slice_4 <- all_dedup_tbl %>% slice(22277:29702)
-slice_5 <- all_dedup_tbl %>% slice(29703:37126)
-
-test_output_name <- "./lit_search_results/flag_tbls/test.csv"
-
-user_flag_input(all_dedup_path,test_output_name)
 
 
